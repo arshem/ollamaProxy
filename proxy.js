@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { randomUUID } = require('crypto');
 
 const app = express();
 const port = 3006;
@@ -131,3 +132,29 @@ async function fetchOllama(body) {
         return null;
     }
 }
+
+// let's add a function, not using express that allows CLI input to generate API keys and puts them in authTokens.json
+async function generateAPIKey() {
+    const uuid = randomUUID();
+    const key = `OLLAMA-${uuid}`;
+    const authTokens = JSON.parse(fs.readFileSync(path.join(__dirname, 'authTokens.json'), 'utf8'));
+    authTokens.push(key);
+    fs.writeFileSync(path.join(__dirname, 'authTokens.json'), JSON.stringify(authTokens));
+    return key;
+}
+
+// start looking for commands from the CLI
+const readline = require('readline');
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+rl.on('line', (input) => {
+    if (input === 'exit') {
+        process.exit();
+    } else if (input === 'generateAPIKey') {
+        generateAPIKey();
+    } else {
+        console.log('Invalid command');
+    }
+});

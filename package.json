@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "This is a system built to prevent people from using the Ollama API willy-nilly if you have it exposed to the interwebs. Requires API keys",
   "dependencies": {
+    "crypto": "^1.0.1",
     "express": "^4.19.2",
     "fs": "^0.0.1-security",
     "path": "^0.12.7"
