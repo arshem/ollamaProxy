@@ -140,6 +140,8 @@ async function generateAPIKey() {
     const authTokens = JSON.parse(fs.readFileSync(path.join(__dirname, 'authTokens.json'), 'utf8'));
     authTokens.push(key);
     fs.writeFileSync(path.join(__dirname, 'authTokens.json'), JSON.stringify(authTokens));
+
+    console.log(`API key generated: ${key}`);
     return key;
 }
 
