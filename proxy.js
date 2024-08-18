@@ -88,7 +88,6 @@ async function checkAuth(req, res) {
         } else {
             res.status(401).send('Unauthorized');
         }
-        next();
     } else {
         res.status(401).send('Unauthorized');
     }
