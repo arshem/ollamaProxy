@@ -5,14 +5,14 @@ const { randomUUID } = require('crypto');
 
 const app = express();
 const port = 3006;
-const OLLAMA_URL = 'http://localhost:11434/v1/chat/completions';
+const OLLAMA_URL = 'http://localhost:11434';
 
 app.use(express.json())
 
-app.post('/models', (req, res) => {
+app.post('/v1/models', (req, res) => {
     // fetch ollama models
     if(checkAuth(req, res)) {
-        fetch('http://localhost:11434/api/tags')
+        fetch(OLLAMA_URL + '/api/tags')
             .then((data) => {
                 res.status(200).json(data);
             })
@@ -22,28 +22,186 @@ app.post('/models', (req, res) => {
     }
 })
 
+app.post('/api/chat', (req, res) => {
+    // rebuild the body to ensure everything is there.
+    const body = {
+        model: req.body.model,
+        messages: req.body.messages
+    }
+    if(req.body.format)
+        {
+            body.format = req.body.format
+        }
+
+        if(req.body.stream)
+        {
+            body.stream = req.body.stream
+        } else {
+            body.stream = false
+        }
+
+        if(req.body.max_tokens)
+        {
+            body.max_tokens = req.body.max_tokens
+        } else {
+            body.max_tokens = 4096
+        }
+
+        if(req.body.temperature)
+        {
+            body.temperature = req.body.temperature
+        } else {
+            body.temperature = 0.75
+        }
+
+        if(req.body.stop)
+        {
+            body.stop = req.body.stop
+        }
+
+        if(req.body.system)
+        {
+            body.system = req.body.system
+        } else {
+            body.system = 'You are a helpful AI assistant'
+        }
+    if(checkAuth(req, res)) {
+        fetchOllama(OLLAMA_URL+'/api/chat', body)
+            .then((data) => {
+                if (body.stream === true) {
+                    // Send the chunks back to the client directly
+                    res.write(data);
+                    res.end();  // Make sure to end the response after the stream is complete
+                } else {
+                    // JSON response for non-streaming case
+                    res.status(200).json(data);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                res.status(500).send('Internal Server Error');
+            });
+    } else {
+        res.status(401).send('Unauthorized');
+    }
+});  
 
 app.post('/v1/chat/completions', (req, res) => {
-    console.log("Headers: ", req.headers);
-    console.log("Body: ", req.body);
     // rebuild the body to ensure everything is there.
-
-
     const body = {
         model: req.body.model,
         messages: req.body.messages
     }
 
-    if(req.body.stream)
-    {
-        body.stream = req.body.stream
-    }
+    if(req.body.format)
+        {
+            body.format = req.body.format
+        }
 
+        if(req.body.stream)
+        {
+            body.stream = req.body.stream
+        } else {
+            body.stream = false
+        }
+
+        if(req.body.max_tokens)
+        {
+            body.max_tokens = req.body.max_tokens
+        } else {
+            body.max_tokens = 4096
+        }
+
+        if(req.body.temperature)
+        {
+            body.temperature = req.body.temperature
+        } else {
+            body.temperature = 0.75
+        }
+
+        if(req.body.stop)
+        {
+            body.stop = req.body.stop
+        }
+
+        if(req.body.system)
+        {
+            body.system = req.body.system
+        } else {
+            body.system = 'You are a helpful AI assistant'
+        }
 
     if(checkAuth(req, res)) {
-        fetchOllama(body)
+        fetchOllama(OLLAMA_URL+'/v1/chat/completions', body)
             .then((data) => {
                 if (body.stream === true) {
+                    // Send the chunks back to the client directly
+                    res.write(data);
+                    res.end();  // Make sure to end the response after the stream is complete
+                } else {
+                    // JSON response for non-streaming case
+                    res.status(200).json(data);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                res.status(500).send('Internal Server Error');
+            });
+    } else {
+        res.status(401).send('Unauthorized');
+    }
+});    
+
+app.post('/api/generate', (req, res) => {
+    if(checkAuth(req, res)) {
+
+        const body = {
+            prompt: req.body.prompt,
+            model: req.body.model
+        }
+        
+        if(req.body.format)
+        {
+            body.format = req.body.format
+        }
+
+        if(req.body.stream)
+        {
+            body.stream = req.body.stream
+        } else {
+            body.stream = false
+        }
+
+        if(req.body.max_tokens)
+        {
+            body.max_tokens = req.body.max_tokens
+        } else {
+            body.max_tokens = 4096
+        }
+
+        if(req.body.temperature)
+        {
+            body.temperature = req.body.temperature
+        } else {
+            body.temperature = 0.75
+        }
+
+        if(req.body.stop)
+        {
+            body.stop = req.body.stop
+        }
+
+        if(req.body.system)
+        {
+            body.system = req.body.system
+        } else {
+            body.system = 'You are a helpful AI assistant'
+        }
+        
+        const url = OLLAMA_URL + '/api/generate';
+        fetchOllama(url, body)
+            .then((data) => {
+                if (req.body.stream === true) {
                     res.status(200).setHeader('Content-Type', 'application/json'); // Or adjust the Content-Type based on your needs
                     
                     // In case of a streamed response, data is already emitted in chunks
@@ -62,7 +220,7 @@ app.post('/v1/chat/completions', (req, res) => {
     } else {
         res.status(401).send('Unauthorized');
     }
-});    
+})
 
 // start your servers
 app.listen(port, () => {
@@ -83,7 +241,6 @@ async function checkAuth(req, res) {
         const authTokens = JSON.parse(fs.readFileSync(path.join(__dirname, 'authTokens.json'), 'utf8'));
         if (authTokens.includes(trim(token))) {
             // token is valid
-            console.log("Token is valid");
             return true;
         } else {
             res.status(401).send('Unauthorized');
@@ -93,11 +250,17 @@ async function checkAuth(req, res) {
     }
 }
 
-async function fetchOllama(body) {
-    const isStreaming = body.stream === true;
+async function fetchOllama(url, body) {
+    
+    let isStreaming = false;
+
+    if(body.stream === true)
+    {
+        isStreaming = true;
+    }
 
     try {
-        const response = await fetch(OLLAMA_URL, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -105,9 +268,15 @@ async function fetchOllama(body) {
             body: JSON.stringify(body)
         });
 
-        if (!isStreaming) {
+        if (isStreaming===false) {
             // Just parse the full response if streaming is not required
-            return await response.json();
+
+            // check body to see if `format` exists
+            if(body.format) {
+                return await response.text();
+            } else {
+                return await response.json();
+            }
         } else {
             // Handle streaming response
             console.log("Guess we're streaming...");
